@@ -19,6 +19,8 @@ fn main() {
         println!("{:#?}", price);
         let price = conn.get_prices_today(h);
         println!("{:#?}", price);
+        let price = conn.get_prices_tomorrow(h);
+        println!("{:#?}", price);
         let history = conn.get_consuption(h, TimeResolution::Daily, 10);
         println!("{:#?}", history);
     }

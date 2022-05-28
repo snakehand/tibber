@@ -37,6 +37,14 @@ struct PriceToday;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "tibber/tibber.json",
+    query_path = "tibber/price_tomorrow.graphql",
+    response_derives = "Debug"
+)]
+struct PriceTomorrow;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "tibber/tibber.json",
     query_path = "tibber/home.graphql",
     response_derives = "Debug"
 )]
@@ -314,6 +322,35 @@ impl PriceInfo {
             level,
         })
     }
+
+    fn new_f(
+        pinfo: price_tomorrow::PriceTomorrowViewerHomeCurrentSubscriptionPriceInfoTomorrow,
+    ) -> Option<Self> {
+        let total = pinfo.total?;
+        let (energy, tax) = match (pinfo.energy, pinfo.tax) {
+            (Some(e), Some(t)) => (e, t),
+            (Some(e), None) => (e, total - e),
+            (None, Some(t)) => (total - t, t),
+            _ => (total, 0.0),
+        };
+        let level = match pinfo.level {
+            Some(price_tomorrow::PriceLevel::VERY_CHEAP) => PriceLevel::VeryCheap,
+            Some(price_tomorrow::PriceLevel::CHEAP) => PriceLevel::Cheap,
+            Some(price_tomorrow::PriceLevel::NORMAL) => PriceLevel::Normal,
+            Some(price_tomorrow::PriceLevel::EXPENSIVE) => PriceLevel::Expensive,
+            Some(price_tomorrow::PriceLevel::VERY_EXPENSIVE) => PriceLevel::VeryExpensive,
+            Some(price_tomorrow::PriceLevel::Other(s)) => PriceLevel::Other(s),
+            _ => PriceLevel::None,
+        };
+        Some(PriceInfo {
+            total,
+            energy,
+            tax,
+            starts_at: pinfo.starts_at.unwrap_or_default(),
+            currency: pinfo.currency,
+            level,
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -407,7 +444,6 @@ impl Consumption {
         })
     }
 }
-
 
 /// A tibber session, can be shared among threads, only holds the API token
 pub struct TibberSession {
@@ -526,6 +562,33 @@ impl TibberSession {
             .into_iter()
             .flatten()
             .map(PriceInfo::new_t)
+            .flatten()
+            .collect();
+        Ok(prices)
+    }
+
+    /// Get tomorrows prices (if available) for a particular house / home
+    pub fn get_prices_tomorrow(
+        &self,
+        home_id: &HomeId,
+    ) -> Result<Vec<PriceInfo>, Box<dyn std::error::Error>> {
+        let id = home_id.0.to_owned();
+        let price = fetch_data::<PriceTomorrow>(
+            self.authentication.as_str(),
+            price_tomorrow::Variables { id },
+        )?;
+        let prices = price
+            .viewer
+            .home
+            .current_subscription
+            .ok_or("No subscription")?
+            .price_info
+            .ok_or("No Price info")?
+            .tomorrow;
+        let prices = prices
+            .into_iter()
+            .flatten()
+            .map(PriceInfo::new_f)
             .flatten()
             .collect();
         Ok(prices)
