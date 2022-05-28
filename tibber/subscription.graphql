@@ -1,0 +1,43 @@
+query Home ($id: ID!) {
+  viewer {
+    home(id: $id) {
+      timeZone
+      appNickname
+      size
+      type
+      numberOfResidents
+      primaryHeatingSource
+      hasVentilationSystem
+      mainFuseSize
+      address {
+        address1
+        address2
+        address3
+        postalCode
+        city
+        country
+        latitude
+        longitude
+      }
+      owner {
+        id
+      }
+      meteringPointData {
+        consumptionEan
+        gridCompany
+        gridAreaCode
+        priceAreaCode
+        productionEan
+        energyTaxType
+        vatType
+        estimatedAnnualConsumption
+      }
+      currentSubscription {
+        id
+      }
+      features {
+        realTimeConsumptionEnabled
+      }
+    }
+  }
+}

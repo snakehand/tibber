@@ -1,0 +1,18 @@
+query PriceToday ($id: ID!) {
+  viewer {
+    home (id: $id) {
+      currentSubscription {
+        priceInfo {
+          today {
+            total
+            energy
+            tax
+            startsAt
+            currency
+            level
+          }
+        }
+      }
+    }
+  }
+}
