@@ -6,6 +6,7 @@
 //! Docs of underlying API : https://developer.tibber.com/docs/overview
 
 use ::reqwest::blocking::Client;
+use chrono::{DateTime, FixedOffset};
 use graphql_client::{reqwest::post_graphql_blocking as post_graphql, GraphQLQuery};
 
 // The paths are relative to the directory where your `Cargo.toml` is located.
@@ -259,7 +260,7 @@ pub struct PriceInfo {
     /// Taxes to be added to energy cost
     pub tax: f64,
     /// When this pricing interval started
-    pub starts_at: String,
+    pub starts_at: DateTime<FixedOffset>,
     /// The currency that is used to set price
     pub currency: String,
     /// Classification of price relative to avarage
@@ -284,11 +285,15 @@ impl PriceInfo {
             Some(price::PriceLevel::Other(s)) => PriceLevel::Other(s),
             _ => PriceLevel::None,
         };
+        let starts_at = chrono::DateTime::parse_from_rfc3339(
+            pinfo.starts_at.ok_or("no starts_at time").ok()?.as_str(),
+        )
+        .ok()?;
         Some(PriceInfo {
             total,
             energy,
             tax,
-            starts_at: pinfo.starts_at.unwrap_or_default(),
+            starts_at,
             currency: pinfo.currency,
             level,
         })
@@ -313,11 +318,15 @@ impl PriceInfo {
             Some(price_today::PriceLevel::Other(s)) => PriceLevel::Other(s),
             _ => PriceLevel::None,
         };
+        let starts_at = chrono::DateTime::parse_from_rfc3339(
+            pinfo.starts_at.ok_or("no starts_at time").ok()?.as_str(),
+        )
+        .ok()?;
         Some(PriceInfo {
             total,
             energy,
             tax,
-            starts_at: pinfo.starts_at.unwrap_or_default(),
+            starts_at,
             currency: pinfo.currency,
             level,
         })
@@ -342,11 +351,15 @@ impl PriceInfo {
             Some(price_tomorrow::PriceLevel::Other(s)) => PriceLevel::Other(s),
             _ => PriceLevel::None,
         };
+        let starts_at = chrono::DateTime::parse_from_rfc3339(
+            pinfo.starts_at.ok_or("no starts_at time").ok()?.as_str(),
+        )
+        .ok()?;
         Some(PriceInfo {
             total,
             energy,
             tax,
-            starts_at: pinfo.starts_at.unwrap_or_default(),
+            starts_at,
             currency: pinfo.currency,
             level,
         })
@@ -407,9 +420,9 @@ pub enum EnergyUnits {
 /// Consumption data
 pub struct Consumption {
     /// Start of interval
-    pub from: String,
+    pub from: DateTime<FixedOffset>,
     /// End of interval
-    pub to: String,
+    pub to: DateTime<FixedOffset>,
     /// Total price
     pub cost: f64,
     /// Price pr unit
@@ -434,9 +447,11 @@ impl Consumption {
             },
             _ => EnergyUnits::None,
         };
+        let from = DateTime::parse_from_rfc3339(node.from.as_str()).ok()?;
+        let to = DateTime::parse_from_rfc3339(node.to.as_str()).ok()?;
         Some(Consumption {
-            from: node.from,
-            to: node.to,
+            from,
+            to,
             cost,
             unit_price,
             unit_price_vat,
