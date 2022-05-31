@@ -19,7 +19,7 @@ fn main() {
     }
 
     if args.is_empty() {
-        println!("usage: lowst n  ( n next hours )");
+        println!("usage: lowest n  ( n next hours )");
         return;
     }
 
