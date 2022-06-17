@@ -1,6 +1,3 @@
-use chrono::Timelike;
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
 use tibber::*;
 
 /// Find max hourly usages last n days
