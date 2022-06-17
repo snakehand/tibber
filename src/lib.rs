@@ -406,7 +406,7 @@ pub enum TimeResolution {
     Annual,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 /// Measurement if energy with appropriate units
 pub enum EnergyUnits {
     #[allow(non_camel_case_types)]

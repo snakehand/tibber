@@ -1,6 +1,6 @@
 [package]
 name = "tibber"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 authors = ["Frank A. Stevenson <root@localhost>"]
 description = "A minimal set of bindings to Tibber graphql API"
