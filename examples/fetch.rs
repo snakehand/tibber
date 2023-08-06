@@ -23,5 +23,7 @@ fn main() {
         println!("{:#?}", price);
         let history = conn.get_consuption(h, TimeResolution::Daily, 10);
         println!("{:#?}", history);
+        let delivery = conn.get_production(h, TimeResolution::Hourly, 24);
+        println!("{:#?}", delivery);
     }
 }

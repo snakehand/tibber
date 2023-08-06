@@ -1,0 +1,17 @@
+query ProductionHistory($id: ID!, $resolution: EnergyResolution!, $num: Int!) {
+  viewer {
+    home (id: $id) {
+      production(resolution: $resolution, last: $num) {
+        nodes {
+          from
+          to
+          profit
+          unitPrice
+          unitPriceVAT
+          production
+          productionUnit
+        }
+      }
+    }
+  }
+}
