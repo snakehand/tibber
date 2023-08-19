@@ -59,6 +59,14 @@ struct Home;
 )]
 struct ConsumptionHistory;
 
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "tibber/tibber.json",
+    query_path = "tibber/production.graphql",
+    response_derives = "Debug"
+)]
+struct ProductionHistory;
+
 fn fetch_data<T: GraphQLQuery>(
     api_token: &str,
     variables: <T as GraphQLQuery>::Variables,
@@ -460,6 +468,50 @@ impl Consumption {
     }
 }
 
+#[derive(Debug, Clone)]
+/// Production data
+pub struct Production {
+    /// Start of interval
+    pub from: DateTime<FixedOffset>,
+    /// End of interval
+    pub to: DateTime<FixedOffset>,
+    /// Total price
+    pub profit: f64,
+    /// Price pr unit
+    pub unit_price: f64,
+    /// Tax pr unit
+    pub unit_price_vat: f64,
+    /// Type of units and units
+    pub energy: EnergyUnits,
+}
+
+impl Production {
+    fn new(
+        node: production_history::ProductionHistoryViewerHomeProductionNodes,
+    ) -> Option<Self> {
+        let profit = node.profit?;
+        let unit_price = node.unit_price?;
+        let unit_price_vat = node.unit_price_vat?;
+        let energy = match node.production_unit {
+            Some(s) if s.as_str() == "kWh" => match node.production {
+                Some(c) => EnergyUnits::kWh(c),
+                _ => EnergyUnits::None,
+            },
+            _ => EnergyUnits::None,
+        };
+        let from = DateTime::parse_from_rfc3339(node.from.as_str()).ok()?;
+        let to = DateTime::parse_from_rfc3339(node.to.as_str()).ok()?;
+        Some(Production {
+            from,
+            to,
+            profit,
+            unit_price,
+            unit_price_vat,
+            energy,
+        })
+    }
+}
+
 /// A tibber session, can be shared among threads, only holds the API token
 pub struct TibberSession {
     authentication: String,
@@ -640,6 +692,42 @@ impl TibberSession {
             .into_iter()
             .flatten()
             .map(Consumption::new)
+            .flatten()
+            .collect();
+        Ok(history)
+    }
+
+    /// Get historical production data for a particular house / home
+    pub fn get_production(
+        &self,
+        home_id: &HomeId,
+        resolution: TimeResolution,
+        last: u32,
+    ) -> Result<Vec<Production>, Box<dyn std::error::Error>> {
+        let id = home_id.0.to_owned();
+        let resolution = match resolution {
+            TimeResolution::Hourly => production_history::EnergyResolution::HOURLY,
+            TimeResolution::Daily => production_history::EnergyResolution::DAILY,
+            TimeResolution::Weekly => production_history::EnergyResolution::WEEKLY,
+            TimeResolution::Monthly => production_history::EnergyResolution::MONTHLY,
+            TimeResolution::Annual => production_history::EnergyResolution::ANNUAL,
+        };
+        let variables = production_history::Variables {
+            id,
+            resolution,
+            num: last.into(),
+        };
+        let history = fetch_data::<ProductionHistory>(self.authentication.as_str(), variables)?;
+        let history = history
+            .viewer
+            .home
+            .production
+            .ok_or("No History")?
+            .nodes
+            .ok_or("No history nodes")?
+            .into_iter()
+            .flatten()
+            .map(Production::new)
             .flatten()
             .collect();
         Ok(history)
