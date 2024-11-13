@@ -4,10 +4,12 @@
 //! Simple bindings to Tibber GraphQL API
 //!
 //! Docs of underlying API : https://developer.tibber.com/docs/overview
-
+#[cfg(feature = "reqwest")]
 use ::reqwest::blocking::Client;
 use chrono::{DateTime, FixedOffset};
-use graphql_client::{reqwest::post_graphql_blocking as post_graphql, GraphQLQuery};
+#[cfg(feature = "reqwest")]
+use graphql_client::reqwest::post_graphql_blocking as post_graphql;
+use graphql_client::GraphQLQuery;
 
 // The paths are relative to the directory where your `Cargo.toml` is located.
 // Both json and the GraphQL schema language are supported as sources for the schema
@@ -67,12 +69,13 @@ struct ConsumptionHistory;
 )]
 struct ProductionHistory;
 
-fn fetch_data<T: GraphQLQuery>(
+#[cfg(feature = "reqwest")]
+fn make_request<Q: GraphQLQuery>(
     api_token: &str,
-    variables: <T as GraphQLQuery>::Variables,
-) -> Result<<T as GraphQLQuery>::ResponseData, Box<dyn std::error::Error>> {
+    variables: <Q as GraphQLQuery>::Variables,
+) -> Result<graphql_client::Response<Q::ResponseData>, Box<dyn std::error::Error>> {
     let client = Client::builder()
-        .user_agent("graphql-rust/0.10.0")
+        .user_agent("graphql-rust/0.14.0")
         .default_headers(
             std::iter::once((
                 reqwest::header::AUTHORIZATION,
@@ -82,8 +85,35 @@ fn fetch_data<T: GraphQLQuery>(
         )
         .build()?;
 
-    let response_body =
-        post_graphql::<T, _>(&client, "https://api.tibber.com/v1-beta/gql/", variables)?;
+    Ok(post_graphql::<Q, _>(
+        &client,
+        "https://api.tibber.com/v1-beta/gql/",
+        variables,
+    )?)
+}
+
+#[cfg(feature = "ureq")]
+fn make_request<Q: GraphQLQuery>(
+    api_token: &str,
+    variables: <Q as GraphQLQuery>::Variables,
+) -> Result<graphql_client::Response<Q::ResponseData>, Box<dyn std::error::Error>> {
+    let agent = ureq_crate::AgentBuilder::new()
+        .user_agent("graphql-rust/0.14.0")
+        .build();
+
+    let body = Q::build_query(variables);
+    Ok(agent
+        .post("https://api.tibber.com/v1-beta/gql/")
+        .set("Authorization", &format!("Bearer {}", api_token))
+        .send_json(&body)?
+        .into_json()?)
+}
+
+fn fetch_data<T: GraphQLQuery>(
+    api_token: &str,
+    variables: <T as GraphQLQuery>::Variables,
+) -> Result<<T as GraphQLQuery>::ResponseData, Box<dyn std::error::Error>> {
+    let response_body = make_request::<T>(api_token, variables)?;
 
     let response_data = match response_body.data {
         Some(d) => d,
@@ -486,9 +516,7 @@ pub struct Production {
 }
 
 impl Production {
-    fn new(
-        node: production_history::ProductionHistoryViewerHomeProductionNodes,
-    ) -> Option<Self> {
+    fn new(node: production_history::ProductionHistoryViewerHomeProductionNodes) -> Option<Self> {
         let profit = node.profit?;
         let unit_price = node.unit_price?;
         let unit_price_vat = node.unit_price_vat?;
