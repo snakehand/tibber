@@ -269,7 +269,7 @@ impl Features {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 /// Rough classification of price level compared to a 3 day moving avarage
 pub enum PriceLevel {
     /// Much lower than avarage
@@ -288,7 +288,7 @@ pub enum PriceLevel {
     None,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 /// Information about price in a particular interval
 pub struct PriceInfo {
     /// Total price
