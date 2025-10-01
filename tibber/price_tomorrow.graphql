@@ -2,7 +2,7 @@ query PriceTomorrow ($id: ID!) {
   viewer {
     home (id: $id) {
       currentSubscription {
-        priceInfo {
+        priceInfo(resolution: QUARTER_HOURLY) {
           tomorrow {
             total
             energy
