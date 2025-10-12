@@ -689,8 +689,20 @@ impl TibberSession {
         Ok(prices)
     }
 
-    /// Get historical consumption data for a particular house / home
+    /// Backward compatible typo version of [`Self::get_consumption()`],
+    /// deprecated.
+    #[deprecated]
     pub fn get_consuption(
+        &self,
+        home_id: &HomeId,
+        resolution: TimeResolution,
+        last: u32,
+    ) -> Result<Vec<Consumption>, Box<dyn std::error::Error>> {
+        self.get_consumption(home_id, resolution, last)
+    }
+
+    /// Get historical consumption data for a particular house / home
+    pub fn get_consumption(
         &self,
         home_id: &HomeId,
         resolution: TimeResolution,
